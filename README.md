@@ -6,6 +6,7 @@
 ####给小白程序员的几点建议 <http://www.jianshu.com/p/b257acafe467>
 ####如何成为一个全栈工程师 <http://www.jianshu.com/p/3e0b4b83f6a8>
 ####优秀的程序员  <http://www.jianshu.com/p/bba59d8f176d>
+####MVC、MVP、MVVM模式详解  <http://www.jianshu.com/p/52e82c78f73a>
 ####MVC框架设计思想与设计理念   <http://www.jianshu.com/p/fd6f48d7b8c4>
 
 ---
@@ -19,7 +20,6 @@
 ####Android工程师自我定位 <http://www.jianshu.com/p/aa845c024add>
 ####Android经典面试题 <http://www.jianshu.com/p/dbb31ee3ab06>
 ####Android初级面试题 <http://www.jianshu.com/p/a9f52285c979>
-####MVC、MVP、MVVM模式详解  <http://www.jianshu.com/p/52e82c78f73a>
 ####Android线程机制_Handler系列  <http://www.jianshu.com/p/6459f9489b5c>
 ####Android - Activity四种启动模式详解  <http://www.jianshu.com/p/c46e53da973b>
 ####史上最完全TextView用法  <http://www.jianshu.com/p/f36027ae7c84>
