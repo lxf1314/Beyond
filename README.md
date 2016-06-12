@@ -19,8 +19,9 @@
 ####Android工程师自我定位 <http://www.jianshu.com/p/aa845c024add>
 ####Android经典面试题 <http://www.jianshu.com/p/dbb31ee3ab06>
 ####Android初级面试题 <http://www.jianshu.com/p/a9f52285c979>
+####MVC、MVP、MVVM模式详解  <http://www.jianshu.com/p/52e82c78f73a>
 ####Android线程机制_Handler系列  <http://www.jianshu.com/p/6459f9489b5c>
 ####Android - Activity四种启动模式详解  <http://www.jianshu.com/p/c46e53da973b>
 ####史上最完全TextView用法  <http://www.jianshu.com/p/f36027ae7c84>
 ####史上最完全Gson用法  <http://www.jianshu.com/p/cff5f145e596>
-####
+
