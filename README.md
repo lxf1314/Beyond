@@ -24,4 +24,5 @@
 ####Android - Activity四种启动模式详解  <http://www.jianshu.com/p/c46e53da973b>
 ####史上最完全TextView用法  <http://www.jianshu.com/p/f36027ae7c84>
 ####史上最完全Gson用法  <http://www.jianshu.com/p/cff5f145e596>
+####Intent传递对象的两种方式  <http://www.jianshu.com/p/8d47a0e88e88>
 
