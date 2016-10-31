@@ -50,7 +50,7 @@ conference()：调用RIL.conference进行电话会议，AT执行完成后返回�
 
 separate：调用RIL.separateConnection分离出一路通话，AT执行完成后返回的Message由handlerMessage中的case分支EVENT_SEPARATE_RESULT进行处理。
 
-对它们执行结果的处理如下：
+对它们执行结果的处理如下： 
 
 case EVENT_SWITCH_RESULT:
 case EVENT_CONFERENCE_RESULT:
