@@ -70,7 +70,7 @@ ar = (AsyncResult)msg.obj;//获取回送的结果
 if (msg == lastRelevantPoll) {
 if (DBG_POLL) log(
 “handle EVENT_POLL_CALL_RESULT: set needsPoll=F”);
-needsPoll = false;
+needsPoll = false; 
 lastRelevantPoll = null;
 handlePollCalls((AsyncResult)msg.obj);//处理结果
 }
