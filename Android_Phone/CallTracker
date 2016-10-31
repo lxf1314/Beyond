@@ -1,0 +1,105 @@
+GSMCallTracker实现了电话的拨打（Dial）、接听/拒绝(accept/reject)、挂断（hangup）、保持（hold）、切换以及电话会议等功能，它还负责查询Modem当前有多少路通话，维护电话状态等功能。
+
+GSMCallTracker中包含了GsmConnection、RegistrantList、 GSMCall和Phone.State等类的对象实例。
+
+GSMCall包含可以支持多路通话，每路通话意味着一个通话连接GsmConnection（最多5个）当它们状态均为DISCONNECTED时意外着该GSMCall为IDLE状态。
+
+在GSMCallTracker构造函数中向RIL类实例注册了RegistrantList，当通话状态及射频Radio状态变化时，就会通知GSMCallTracker：
+
+GsmCallTracker (GSMPhone phone) {
+this.phone = phone;
+cm = phone.mCM;
+
+cm.registerForCallStateChanged(this, EVENT_CALL_STATE_CHANGE, null);
+cm.registerForOn(this, EVENT_RADIO_AVAILABLE, null);
+cm.registerForNotAvailable(this, EVENT_RADIO_NOT_AVAILABLE, null);
+
+而GSMCallTracker的handleMessage就会做出相应处理：
+
+case EVENT_CALL_STATE_CHANGE:
+pollCallsWhenSafe();
+break;
+case EVENT_RADIO_AVAILABLE:
+handleRadioAvailable();
+break;
+case EVENT_RADIO_NOT_AVAILABLE:
+handleRadioNotAvailable();
+
+它们最终都调用的是pollCallsWhenSafe去查询当前的通话状态。
+
+dial：拨打电话。它首先clearDisconnected()和canDial()清空过去的非连接状态的Connections，然后检查是否可以拨打电话。接着检查foregroundCall是否处于Active状态，若是则调用switchWaitingOrHoldingAndActive将它们切换到后台，调用fakeHoldForegroundBeforeDial将前台中的连接全部清空到后台，并且状态变为HOLDING。在进行这些前期检查和准备后，创建一个GsmConnection实例即pendingMO，检查传递过来的电话号码是否有效合法，若不合法则调用pollCallsWhenSafe()，目的是将其标为dropped；若合法则设置为非静音后，调用RIL. dial进行拨号。最后，更新Phone状态并通知给注册者。
+
+acceptCall：接听电话。若ringingCall正处于INCOMING则调用RIL.acceptCall去接听电话；若是WAITING状态，则调用switchWaitingOrHoldingAndActive将其切换到前台。
+
+rejectCall：拒接电话。当ringingCall处于INCOMING时，则调用RIL.rejectCall拒绝；否则抛出异常，表示没有来电却去接听它。
+
+hangup：挂断某个GSMCall的电话。它区分是ringingCall、foregroundCall还是backgroundCall。若是ringingCall，则调用RIL.hangupWaitingOrBackground；若是foregroundCall，并且是在DIALING或ALERTING状态则调用调用hangup (GsmConnection conn)挂断，否则调用hangupForegroundResumeBackground挂断前台通话后恢复后台通话；若是backgroundCall且ringingCall在响铃，则调用hangupAllConnections挂断所有在backgroundCall的通话连接，否则调用hangupWaitingOrBackground挂断呼叫等待和后台通话。
+
+当上面这些功能API函数完成后，均由下面的case分支处理：
+
+case EVENT_OPERATION_COMPLETE:
+ar = (AsyncResult)msg.obj;
+operationComplete();
+break;
+
+explicitCallTransfer：调用RIL.explicitCallTransfer进行交换，AT执行完成后返回的Message由handlerMessage中的case分支EVENT_ECT_RESULT进行处理。
+
+switchWaitingOrHoldingAndActive()：调用RIL.witchWaitingOrHoldingAndActive进行切换，AT执行完成后返回的Message由handlerMessage中的case分支EVENT_SWITCH_RESULT进行处理。
+
+conference()：调用RIL.conference进行电话会议，AT执行完成后返回的Message由handlerMessage中的case分支EVENT_CONFERENCE_RESULT进行处理。
+
+separate：调用RIL.separateConnection分离出一路通话，AT执行完成后返回的Message由handlerMessage中的case分支EVENT_SEPARATE_RESULT进行处理。
+
+对它们执行结果的处理如下：
+
+case EVENT_SWITCH_RESULT:
+case EVENT_CONFERENCE_RESULT:
+case EVENT_SEPARATE_RESULT:
+case EVENT_ECT_RESULT:
+ar = (AsyncResult)msg.obj;
+if (ar.exception != null){
+phone.notifySuppServiceFailed(getFailedService(msg.what));
+}
+operationComplete();
+break;
+
+在未发生异常的情况下，会调用operationComplete()检查是否是最后一个操作，若是则发送EVENT_POLL_CALLS_RESULT类型消息，进而继续由handlerMessage处理：
+
+case EVENT_POLL_CALLS_RESULT:
+ar = (AsyncResult)msg.obj;//获取回送的结果
+if (msg == lastRelevantPoll) {
+if (DBG_POLL) log(
+“handle EVENT_POLL_CALL_RESULT: set needsPoll=F”);
+needsPoll = false;
+lastRelevantPoll = null;
+handlePollCalls((AsyncResult)msg.obj);//处理结果
+}
+break;
+
+handlePollCalls处理查询结果，将回送的Modem中的通话列表逐个解析出来。
+
+其它函数解释：
+
+fakeHoldForegroundBeforeDial()将前台电话（ForegroundCall）中的电话连接（GSMConnections）clone后台后，将这些连接删除，将Foreground置为IDLE状态，将后台电话BackgroundCall置为HOLDING状态。
+
+clearDisconnected()：清除已Disconnected的电话连接并更新电话状态，然后通知注册者当前最新的状态。
+
+internalClearDisconnected()：将ringingCall、 foregroundCall和 backgroundCall中状态为DISCONNECTED的 connections清除掉，若没有connection则将该GSMCall置为idle状态。
+
+updatePhoneState()：更新Phone状态，并向注册者通知语音通话开始或结束。
+
+canDial()：检查是否可以拨打电话，只有同时满足下列条件才可以：（1）射频Raido未关闭（2）PendingMO这个Connection为空（3）RingCall这个GSMCall未处于响铃状态（4）系统没有禁止电话拨打功能（5）ForegroundCall和BackgroundCall这2个GSMCall都不处于活动状态。其中当为INCOMING 和WAITING表示在响铃；当为DIALING 和 ALERTING时 表示在拨号；当不为IDLE 、 DISCONNECTED 和DISCONNECTING时表示活动状态，即处在上述的响铃、拨号、ACTIVE 和HOLDING时表示处于活动状态。
+
+canConference()：当ForegroundCall处于Active、BackgroundCall处于HOLDING以及它们的连接数少于5个时则可进行电话会议
+
+canTransfer()：当ForegroundCall处于Active、BackgroundCall处于HOLDING时则可进行交换。
+
+hangup (GsmConnection conn)：挂断某路电话连接
+
+hangupWaitingOrBackground()：挂断呼叫等待和后台电话
+
+hangupForegroundResumeBackground()：挂断前台电话并恢复后台电话
+
+hangupConnectionByIndex(GsmCall call, int index)：挂断某个索引指定的前台通话
+
+hangupAllConnections(GsmCall call)：挂断所有电话通路
